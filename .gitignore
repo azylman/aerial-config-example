@@ -1,0 +1,6 @@
+﻿.env
+.env.*
+*.tmp
+*.tmp.*
+*.swp
+.DS_Store
