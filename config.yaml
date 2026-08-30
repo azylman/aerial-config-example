@@ -1,20 +1,17 @@
-﻿# ==============================================================================
+# ==============================================================================
 # Aerial User Configuration (config.yaml)
 # Example template: https://github.com/azylman/aerial-config-example
 # ==============================================================================
 
 # 1. Agent Model & Runtime Options
-# Options: "Gemini 3.6 Flash (Low)", "Gemini 3.7 Flash (Low)", etc.
 model: "Gemini 3.6 Flash (Low)"
 timeout_minutes: 15
 timezone: "America/Los_Angeles"
 
 # 2. Discord System Channel
-# Channel name (e.g. "aerial-dev") or snowflake channel ID where Aerial sends system alerts
 system_channel: "aerial-dev"
 
 # 3. Multi-Repository Git Synchronization
-# Aerial will automatically poll and pull changes from these repositories
 git_sync:
   enabled: true
   interval: "60s"
@@ -25,11 +22,11 @@ git_sync:
 
 # 4. Custom MCP Servers (Optional)
 # Define additional remote Model Context Protocol servers
-# Environment variables ${VAR} are interpolated from host .env
-# mcp_servers:
-#   brave-search:
-#     serverUrl: "http://brave-mcp:4005/mcp"
-#   custom-api:
-#     serverUrl: "https://mcp.example.com/mcp"
-#     headers:
-#       Authorization: "Bearer ${CUSTOM_API_KEY}"
+# Environment variables `${VAR}` are interpolated from host `.env`
+mcp_servers:
+  brave-search:
+    serverUrl: "http://brave-mcp:4005/mcp"
+  # custom-api:
+  #   serverUrl: "https://mcp.example.com/sse"
+  #   headers:
+  #     Authorization: "Bearer ${CUSTOM_API_KEY}"

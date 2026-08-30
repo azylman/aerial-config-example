@@ -1,0 +1,14 @@
+# ==============================================================================
+# Custom Sidecar Containers & Services (docker-compose.override.yml)
+# Place in your private config repository to add extra MCP servers or sidecars.
+# ==============================================================================
+
+services:
+  brave-mcp:
+    image: mcp/brave-search
+    container_name: aerial-brave-mcp
+    restart: unless-stopped
+    environment:
+      - BRAVE_API_KEY=${BRAVE_API_KEY}
+    networks:
+      - aerial-net
