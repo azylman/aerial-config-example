@@ -4,28 +4,87 @@
 # ==============================================================================
 
 # 1. Agent Model & Runtime Options
-model: "Gemini 3.6 Flash (Low)"
+# Supported models: Gemini 2.5 Flash, Gemini 2.5 Pro, etc.
+model: Gemini 2.5 Flash
 timeout_minutes: 15
-timezone: "America/Los_Angeles"
+timezone: America/Los_Angeles
 
 # 2. Discord System Channel
-system_channel: "aerial-dev"
+# Channel name or snowflake ID for startup announcements and diagnostic alerts
+system_channel: aerial-dev
 
-# 3. Multi-Repository Git Synchronization
+# 3. Administrator Allowlist
+# List of Discord user Snowflake IDs authorized to perform system-level changes
+# (editing SYSTEM.md, AGENTS.md, config.yaml, Docker containers, or crons).
+# Messages from these users are tagged with is_admin: true.
+admin_users:
+  - 1542035925603713086 # Primary Admin
+  # - 987654321098765432 # Secondary Admin
+
+# 4. Channel Policies & Interaction Modes
+# Configure interaction mode and behavior per Discord channel.
+# Lookup order: Channel Snowflake ID -> Channel Name (without '#') -> default.
+#
+# Available Modes:
+#   - threads: Non-thread messages spawn/route to a Discord thread (default).
+#   - channel: Messages are evaluated directly in-channel without threads.
+#   - ignore (or disabled): Channel is completely ignored by Aerial.
+#
+# Available Typing Indicator Options:
+#   - always: Send typing indicator on every evaluated turn (default for threads).
+#   - on_mention: Only send typing indicator when the bot is mentioned/replied to (default for channel).
+#   - never: Never send typing indicator.
+#
+# Session Rotation:
+#   - max_session_turns: Number of turns before rotating internal conversation ID (default: 50).
+#
+# Server Whitelisting (Default-Deny):
+#   Set default.mode: ignore to ignore all undeclared channels in the server,
+#   and only respond in explicitly declared channels.
+channels:
+  # The 'default' block is REQUIRED and acts as the fallback for all channels.
+  default:
+    mode: threads
+    typing_indicator: always
+    ignore_bots: true
+    allow_system_ops: false
+    max_session_turns: 0
+
+  # Example channel-specific override for in-channel direct interaction:
+  general:
+    mode: channel
+    typing_indicator: on_mention
+    ignore_bots: true
+    allow_system_ops: false
+    max_session_turns: 50
+
+  # Example channel-specific override to completely ignore a channel:
+  memes:
+    mode: ignore
+
+  # Example channel-specific override by channel snowflake ID:
+  1543668253363150928:
+    mode: channel
+    typing_indicator: on_mention
+    ignore_bots: false
+    allow_system_ops: true
+    max_session_turns: 50
+
+# 5. Multi-Repository Git Synchronization
 git_sync:
   enabled: true
-  interval: "60s"
-  config_repo_url: "https://github.com/your-username/your-aerial-config.git"
+  interval: 60s
+  config_repo_url: https://github.com/your-username/your-aerial-config.git
   repositories:
-    - "/share/aerial-config"
-    - "/share/aerial"
+    - /share/aerial-config
+    - /share/aerial
 
-# 4. Custom MCP Servers (Optional)
+# 6. Custom MCP Servers (Optional)
 # Define additional remote Model Context Protocol servers
-# Environment variables `${VAR}` are interpolated from host `.env`
+# Environment variables ${VAR} are interpolated from host .env
 mcp_servers:
   brave-search:
-    serverUrl: "http://brave-mcp:4005/mcp"
+    serverUrl: http://brave-mcp:4005/mcp
   # custom-api:
   #   serverUrl: "https://mcp.example.com/sse"
   #   headers:

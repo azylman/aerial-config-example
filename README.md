@@ -29,7 +29,7 @@ aerial-config-example/
    - Copy or fork the files from this repository into your private repo.
 
 2. **Configure your options**:
-   - **`config.yaml`**: Configure agent model, timeout, timezone, Discord system alert channel, git sync repositories, and custom MCP server endpoints.
+   - **`config.yaml`**: Configure agent model, timeout, timezone, Discord system alert channel, admin allowlist (`admin_users`), channel interaction policies (`channels:` with `threads`, `channel`, or `ignore` modes), git sync repositories, and custom MCP server endpoints.
    - **`AGENTS.md`**: Customize Aerial's persona, communication tone, and operational guidelines.
    - **`custom-skills/`**: Add custom operational runbooks in `custom-skills/<skill-name>/SKILL.md`.
    - **`docker-compose.override.yml`**: Define additional sidecar containers or local MCP server instances (e.g., Brave Search MCP) connected to `aerial-net`.
