@@ -1,0 +1,12 @@
+# ==============================================================================
+# Homepage Services Extension (homepage/services.yaml)
+# Adds custom service cards or external applications to the dashboard HUD.
+# ==============================================================================
+
+- Applications:
+    - Example Service:
+        icon: si-docker
+        href: http://localhost:8080
+        description: Example external service
+        server: my-docker
+        container: example-service

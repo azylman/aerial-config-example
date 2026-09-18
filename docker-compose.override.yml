@@ -1,6 +1,7 @@
 # ==============================================================================
 # Custom Sidecar Containers & Services (docker-compose.override.yml)
 # Place in your private config repository to add extra MCP servers or sidecars.
+# Docker Compose natively includes and merges this file on the host.
 # ==============================================================================
 
 services:

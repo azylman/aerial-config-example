@@ -1,0 +1,18 @@
+# ==============================================================================
+# Homepage Settings & Layout Extension (homepage/settings.yaml)
+# Customizes dashboard appearance and grid column layouts.
+# ==============================================================================
+
+showStats: true
+theme: dark
+color: slate
+layout:
+  Aerial AI & Mission Control:
+    style: row
+    columns: 3
+  Observability:
+    style: row
+    columns: 2
+  Applications:
+    style: row
+    columns: 2

@@ -1,0 +1,22 @@
+# ==============================================================================
+# Homepage Widgets Extension (homepage/widgets.yaml)
+# Adds or overrides top-level widgets (search, weather, system resources).
+# ==============================================================================
+
+- search:
+    provider: duckduckgo
+    target: _blank
+
+- openmeteo:
+    label: Weather
+    latitude: 37.7749
+    longitude: -122.4194
+    timezone: America/Los_Angeles
+    units: imperial
+
+- resources:
+    cpu: true
+    memory: true
+    disk: /
+    uptime: true
+    units: imperial

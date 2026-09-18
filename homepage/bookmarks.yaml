@@ -1,0 +1,19 @@
+# ==============================================================================
+# Homepage Bookmarks Extension (homepage/bookmarks.yaml)
+# Cleanly extends core Homepage bookmarks with custom links and categories.
+# Preserves Homepage nested array schema:
+# [ { CategoryName: [ { LinkName: [ { href, icon } ] } ] } ]
+# ==============================================================================
+
+- Developer:
+    - GitHub:
+        - href: https://github.com
+          icon: si-github
+    - Documentation:
+        - href: https://docs.example.com
+          icon: si-readthedocs
+
+- Tools:
+    - Cloudflare:
+        - href: https://dash.cloudflare.com
+          icon: si-cloudflare

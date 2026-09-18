@@ -1,0 +1,99 @@
+name: Validate Configuration
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  validate:
+    name: validate-config
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      - name: Validate config.yaml syntax, schema & personas
+        run: |
+          python3 -c "
+          import os, sys, yaml
+
+          # 1. Validate config.yaml
+          if not os.path.exists('config.yaml'):
+              print('ERROR: config.yaml does not exist', file=sys.stderr)
+              sys.exit(1)
+
+          with open('config.yaml') as f:
+              data = yaml.safe_load(f)
+
+          assert isinstance(data, dict), 'config.yaml must be a YAML mapping'
+
+          if 'model' in data:
+              assert isinstance(data['model'], str) and data['model'].strip(), 'model must be a non-empty string'
+
+          if 'low_effort_model' in data:
+              assert isinstance(data['low_effort_model'], str) and data['low_effort_model'].strip(), 'low_effort_model must be a non-empty string'
+
+          assert 'channels' in data and isinstance(data['channels'], dict), 'channels dictionary is required'
+          assert 'default' in data['channels'], 'channels.default is required'
+
+          valid_modes = {'threads', 'channel', 'ignore', 'disabled'}
+          valid_wake_modes = {'classifier', 'ambient', 'mention', 'mentions', 'direct', 'all', 'always'}
+
+          for ch, policy in data['channels'].items():
+              if not isinstance(policy, dict):
+                  continue
+              if 'mode' in policy:
+                  assert policy['mode'] in valid_modes, f'Channel {ch} has invalid mode: {policy[\"mode\"]}'
+              if 'wake_mode' in policy:
+                  assert policy['wake_mode'] in valid_wake_modes, f'Channel {ch} has invalid wake_mode: {policy[\"wake_mode\"]}'
+              if 'ambient_wake_threshold' in policy and policy['ambient_wake_threshold'] is not None:
+                  thresh = float(policy['ambient_wake_threshold'])
+                  assert 0.0 <= thresh <= 1.0, f'Channel {ch} has ambient_wake_threshold outside [0.0, 1.0]: {thresh}'
+
+          # 2. Validate AGENTS.md
+          if not os.path.exists('AGENTS.md'):
+              print('ERROR: AGENTS.md does not exist', file=sys.stderr)
+              sys.exit(1)
+
+          with open('AGENTS.md', 'r', encoding='utf-8') as f:
+              agents_content = f.read().strip()
+          assert len(agents_content) > 50, 'AGENTS.md is empty or suspiciously short'
+
+          # 3. Validate docker-compose.override.yml (if present)
+          for comp_file in ['docker-compose.override.yml', 'docker-compose.override.yaml']:
+              if os.path.exists(comp_file):
+                  with open(comp_file, 'r', encoding='utf-8') as f:
+                      comp_data = yaml.safe_load(f)
+                  if comp_data is not None:
+                      assert isinstance(comp_data, dict), f'{comp_file} must be a valid YAML mapping'
+                      if 'services' in comp_data:
+                          assert isinstance(comp_data['services'], dict), f'{comp_file}: services must be a mapping'
+
+          # 4. Validate homepage configs (if present)
+          if os.path.isdir('homepage'):
+              for hfile in os.listdir('homepage'):
+                  if hfile.endswith(('.yaml', '.yml')):
+                      with open(os.path.join('homepage', hfile), 'r', encoding='utf-8') as f:
+                          hdata = yaml.safe_load(f)
+                          assert hdata is not None, f'homepage/{hfile} must not be empty'
+
+          # 5. Validate victoriametrics configs (if present)
+          if os.path.isdir('victoriametrics'):
+              for vfile in os.listdir('victoriametrics'):
+                  if vfile.endswith(('.yaml', '.yml')):
+                      with open(os.path.join('victoriametrics', vfile), 'r', encoding='utf-8') as f:
+                          vdata = yaml.safe_load(f)
+                          assert isinstance(vdata, list), f'victoriametrics/{vfile} must be a YAML list'
+
+          print('✅ Configuration passed all syntax and semantic validations.')
+          "

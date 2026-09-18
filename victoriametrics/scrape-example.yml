@@ -1,0 +1,13 @@
+# ==============================================================================
+# Modular VictoriaMetrics Scrape Configuration (victoriametrics/*.yml)
+# VictoriaMetrics automatically discovers and live-reloads scrape targets
+# placed here every 15s without restarting the container stack.
+# Environment variables like %{METRICS_TOKEN} are expanded dynamically.
+# ==============================================================================
+
+- job_name: "custom-node-exporter"
+  scrape_interval: 15s
+  metrics_path: /metrics
+  # bearer_token: "%{CUSTOM_METRICS_TOKEN}"
+  static_configs:
+    - targets: ["custom-exporter:9100"]
