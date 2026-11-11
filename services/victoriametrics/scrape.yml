@@ -1,0 +1,27 @@
+# ==============================================================================
+# VictoriaMetrics Custom Scrape Configurations (services/victoriametrics/scrape.yml)
+# Mounted into VictoriaMetrics / cluster scrape configuration.
+# ==============================================================================
+
+- job_name: "postgres-cnpg"
+  scrape_interval: 15s
+  static_configs:
+    - targets: ["postgres:9187"]
+      labels:
+        instance: "postgres-cnpg"
+        role: "database"
+
+- job_name: "kubelet-cadvisor"
+  scrape_interval: 15s
+  scheme: https
+  tls_config:
+    insecure_skip_verify: true
+  bearer_token_file: "/var/run/secrets/kubernetes.io/serviceaccount/token"
+  metrics_path: /metrics/cadvisor
+  static_configs:
+    - targets: ["localhost:10250"]
+      labels:
+        node: "default"
+  metric_relabel_configs:
+    - source_labels: [container]
+      target_label: name

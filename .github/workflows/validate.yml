@@ -5,11 +5,18 @@ on:
     branches: [ main ]
   push:
     branches: [ main ]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   validate:
     name: validate-config
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -19,13 +26,13 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install PyYAML
+      - name: Install dependencies
         run: pip install pyyaml
 
-      - name: Validate config.yaml syntax, schema & personas
+      - name: Validate config, rules, services, homepage, k8s, and dependabot
         run: |
           python3 -c "
-          import os, sys, yaml
+          import os, sys, yaml, glob, re
 
           # 1. Validate config.yaml
           if not os.path.exists('config.yaml'):
@@ -42,6 +49,9 @@ jobs:
 
           if 'low_effort_model' in data:
               assert isinstance(data['low_effort_model'], str) and data['low_effort_model'].strip(), 'low_effort_model must be a non-empty string'
+
+          if 'timeout_minutes' in data:
+              assert isinstance(data['timeout_minutes'], int) and data['timeout_minutes'] > 0, 'timeout_minutes must be an integer > 0'
 
           assert 'channels' in data and isinstance(data['channels'], dict), 'channels dictionary is required'
           assert 'default' in data['channels'], 'channels.default is required'
@@ -60,40 +70,68 @@ jobs:
                   thresh = float(policy['ambient_wake_threshold'])
                   assert 0.0 <= thresh <= 1.0, f'Channel {ch} has ambient_wake_threshold outside [0.0, 1.0]: {thresh}'
 
-          # 2. Validate AGENTS.md
-          if not os.path.exists('AGENTS.md'):
-              print('ERROR: AGENTS.md does not exist', file=sys.stderr)
-              sys.exit(1)
+          # 2. Validate modular rule files & size limits
+          rule_files = glob.glob('rules/*/*.md')
+          assert len(rule_files) > 0, 'No rule files found under rules/*/*.md'
 
-          with open('AGENTS.md', 'r', encoding='utf-8') as f:
-              agents_content = f.read().strip()
-          assert len(agents_content) > 50, 'AGENTS.md is empty or suspiciously short'
+          MAX_RULE_BYTES = 23040  # 22.5 KB (leaves 512B buffer for SyncRules frontmatter wrapper)
+          for rf in rule_files:
+              with open(rf, 'r', encoding='utf-8') as f:
+                  rf_content = f.read().strip()
+              assert len(rf_content) > 0, f'Rule file {rf} is empty'
+              rule_bytes = os.path.getsize(rf)
+              assert rule_bytes <= MAX_RULE_BYTES, f'Rule file {rf} ({rule_bytes} bytes) exceeds 22.5 KB ceiling ({MAX_RULE_BYTES} bytes).'
 
-          # 3. Validate docker-compose.override.yml (if present)
-          for comp_file in ['docker-compose.override.yml', 'docker-compose.override.yaml']:
-              if os.path.exists(comp_file):
-                  with open(comp_file, 'r', encoding='utf-8') as f:
-                      comp_data = yaml.safe_load(f)
-                  if comp_data is not None:
-                      assert isinstance(comp_data, dict), f'{comp_file} must be a valid YAML mapping'
-                      if 'services' in comp_data:
-                          assert isinstance(comp_data['services'], dict), f'{comp_file}: services must be a mapping'
+          for legacy_file in ['AGENTS.md', 'AGENTS.local.md', 'GEMINI.md', 'GEMINI.local.md']:
+              if os.path.exists(legacy_file):
+                  rule_bytes = os.path.getsize(legacy_file)
+                  assert rule_bytes <= MAX_RULE_BYTES, f'Rule file {legacy_file} ({rule_bytes} bytes) exceeds 22.5 KB ceiling ({MAX_RULE_BYTES} bytes).'
 
-          # 4. Validate homepage configs (if present)
-          if os.path.isdir('homepage'):
-              for hfile in os.listdir('homepage'):
-                  if hfile.endswith(('.yaml', '.yml')):
-                      with open(os.path.join('homepage', hfile), 'r', encoding='utf-8') as f:
-                          hdata = yaml.safe_load(f)
-                          assert hdata is not None, f'homepage/{hfile} must not be empty'
+          # 3. Validate Service & Homepage YAML Configurations
+          cfg_files = sorted(glob.glob('services/*/*.yaml') + glob.glob('services/*/*.yml') + glob.glob('homepage/*.yaml'))
+          assert len(cfg_files) > 0, 'No service or homepage YAML configuration files found'
+          for cf in cfg_files:
+              with open(cf, 'r', encoding='utf-8') as f:
+                  cfg_data = yaml.safe_load(f)
+              assert isinstance(cfg_data, (dict, list)) and len(cfg_data) > 0, f'{cf} must be a non-empty YAML mapping or list'
 
-          # 5. Validate victoriametrics configs (if present)
-          if os.path.isdir('victoriametrics'):
-              for vfile in os.listdir('victoriametrics'):
-                  if vfile.endswith(('.yaml', '.yml')):
-                      with open(os.path.join('victoriametrics', vfile), 'r', encoding='utf-8') as f:
-                          vdata = yaml.safe_load(f)
-                          assert isinstance(vdata, list), f'victoriametrics/{vfile} must be a YAML list'
+          # 4. Validate Kubernetes Manifests (k8s/*.yaml)
+          k8s_files = sorted(glob.glob('k8s/*.yaml'))
+          assert len(k8s_files) > 0, 'No Kubernetes manifest files found under k8s/*.yaml'
+          for kf in k8s_files:
+              with open(kf, 'r', encoding='utf-8') as f:
+                  content = f.read().strip()
+              assert len(content) > 0, f'{kf} is empty'
+              docs = list(yaml.safe_load_all(content))
+              assert len(docs) > 0, f'{kf} contains no YAML documents'
+              for doc in docs:
+                  if not doc:
+                      continue
+                  assert isinstance(doc, dict), f'{kf}: each document must be a YAML mapping'
+                  assert 'apiVersion' in doc and isinstance(doc['apiVersion'], str) and doc['apiVersion'].strip(), f'{kf}: document missing apiVersion'
+                  assert 'kind' in doc and isinstance(doc['kind'], str) and doc['kind'].strip(), f'{kf}: document missing kind'
+                  if doc.get('kind') != 'Kustomization':
+                      assert 'metadata' in doc and isinstance(doc['metadata'], dict), f'{kf}: document missing metadata mapping'
+                      assert 'name' in doc['metadata'] and isinstance(doc['metadata']['name'], str) and doc['metadata']['name'].strip(), f'{kf}: document missing metadata.name'
+
+          # 5. Validate Dependabot configuration and security group pairing
+          dep_file = '.github/dependabot.yml'
+          assert os.path.exists(dep_file), f'{dep_file} does not exist'
+          with open(dep_file, 'r', encoding='utf-8') as f:
+              dep_data = yaml.safe_load(f)
+          assert isinstance(dep_data, dict), f'{dep_file} must be a YAML mapping'
+          updates = dep_data.get('updates', [])
+          assert isinstance(updates, list) and len(updates) > 0, f'{dep_file} must define a non-empty updates list'
+          for update in updates:
+              assert isinstance(update, dict), f'Each entry in {dep_file} updates must be a mapping'
+              groups = update.get('groups', {})
+              assert isinstance(groups, dict) and len(groups) > 0, f'Update entry {update.get(\"package-ecosystem\")} must define groups'
+              applies_to_values = {g.get('applies-to') for g in groups.values() if isinstance(g, dict)}
+              assert 'version-updates' in applies_to_values, f'Update entry {update.get(\"package-ecosystem\")} missing group with applies-to: version-updates'
+              assert 'security-updates' in applies_to_values, f'Update entry {update.get(\"package-ecosystem\")} missing group with applies-to: security-updates'
 
           print('✅ Configuration passed all syntax and semantic validations.')
           "
+
+      - name: Validate Kustomize build
+        run: kubectl kustomize --load-restrictor LoadRestrictionsNone k8s/ >/dev/null

@@ -1,0 +1,16 @@
+# ==============================================================================
+# Coven Semantic & Procedural Memory Configuration (services/coven/coven.yaml)
+# ==============================================================================
+
+port: "4008"
+eri_url: "http://eri.aerial"
+eri_llm_url: "http://eri.aerial/internal/llm"
+pr_register_url: "http://synapse.aerial/internal/pr/register"
+custom_skills_dir: "/share/aerial-config/custom-skills"
+rules_dir: "/share/aerial-config/rules"
+config_repo_owner: "example-user"
+config_repo_name: "aerial-config"
+ollama:
+  base_url: "http://senses.aerial"
+  model: "bge-small-en-v1.5"
+  num_ctx: 512
