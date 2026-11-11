@@ -1,0 +1,11 @@
+# ==============================================================================
+# Synapse Configuration (services/synapse/synapse.yaml)
+# ==============================================================================
+
+bot_id: "aerial"
+default_owner: true
+
+port: "4020"
+system_channel_id: ""
+
+auto_update_pr_authors: []

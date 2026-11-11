@@ -3,10 +3,19 @@
 # Adds custom service cards or external applications to the dashboard HUD.
 # ==============================================================================
 
-- Applications:
-    - Example Service:
-        icon: si-docker
-        href: http://localhost:8080
-        description: Example external service
-        server: my-docker
-        container: example-service
+- Aerial AI & Mission Control:
+    - Aerial Console:
+        icon: si-googlegemini
+        href: /console/
+        description: Autonomous Agent Mission Control
+        siteMonitor: http://console.aerial/health
+    - AgentsView:
+        icon: si-gnubash
+        href: /agentsview/
+        description: Live Trajectory & Agent Inspector
+        siteMonitor: http://agentsview.aerial/agentsview/
+    - Aerial Docs:
+        icon: si-readthedocs
+        href: /docs/
+        description: Architecture & System Documentation
+        siteMonitor: http://docs.aerial/health

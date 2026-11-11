@@ -11,21 +11,27 @@ model: "Gemini 3.8 Flash (High)"
 low_effort_model: "Gemini 3.8 Flash (Low)"
 
 # Timezone for scheduled cron routines and timestamp rendering
-timezone: America/Los_Angeles
+timezone: "America/Los_Angeles"
 
 # 2. Discord System Channel
 # Channel name or snowflake ID for startup announcements and diagnostic alerts
-system_channel: aerial-dev
+system_channel: "aerial-dev"
 
-# 3. Administrator Allowlist
+# 3. Core Microservices (*.aerial Cluster CoreDNS)
+vanadis_url: "http://vanadis.aerial"
+haro_url: "http://haro.aerial"
+coven_url: "http://coven.aerial"
+docket_url: "http://docket.aerial"
+
+# 4. Administrator Allowlist
 # Numeric Discord Snowflake IDs or Discord usernames authorized to perform system-level operations
-# (modifying system prompts, config.yaml, Docker containers, or scheduled crons).
+# (modifying system prompts, config.yaml, or scheduled crons).
 # Messages from these users are tagged with is_admin: true.
 admin_users:
   - "123456789012345678" # Example Admin Snowflake ID
   # - "admin_username"    # Example Admin Discord Username
 
-# 4. Channel Policies & Interaction Modes
+# 5. Channel Policies & Interaction Modes
 # Configure interaction mode and sensitivity per Discord channel.
 # Lookup order: Channel Snowflake ID -> Channel Name (without '#') -> default.
 #
@@ -35,30 +41,15 @@ admin_users:
 #   - ignore (or disabled): Channel is completely ignored by Aerial.
 #
 # Available Wake Modes (wake_mode):
-#   - classifier: Direct mentions, replies, keywords ("aerial", "gundam"), AND
-#     ambient relevance scoring via the low-effort model (default for mode: channel).
-#   - mention: Strictly responds to explicit @mentions or direct replies. Keyword
-#     triggers and LLM classifier are bypassed with zero token cost. Ambient channel
-#     chatter is silently recorded in transcript history for full conversational lookback.
-#   - all: Responds to every message (default for mode: threads inside an active thread).
+#   - classifier: Direct mentions, direct replies, and ambient relevance scoring via the low-effort model.
+#   - mention: Strictly responds to explicit @mentions or direct replies. Ambient channel chatter
+#     is silently recorded in transcript history for conversational lookback.
+#   - all: Responds to every message (default inside an active thread).
 #
 # Ambient Classification (for wake_mode: classifier):
 #   - ambient_wake_threshold: Confidence score threshold (0.0 to 1.0) to wake Aerial (default: 0.80).
-#   - ambient_wake_prompt: Custom criteria/prompt directive for the ambient relevance classifier.
+#   - ambient_wake_prompt: Custom criteria/directive for the ambient relevance classifier.
 #   - ignore_bots: Ignore messages from bot accounts (default: true).
-#
-# Channel Lifecycle Webhooks (hooks):
-#   - on_wake: Intercepts raw message to override wake decisions (wake, drop, classify).
-#   - pre_turn: Gating (proceed, drop, retry) and dynamic coordination context injection.
-#   - post_turn: Receives turn outcome, execution duration, and token telemetry.
-#
-# Per-Channel Instructions:
-#   Place markdown files in channels/<channel-name>.md (e.g. channels/general.md).
-#   Aerial auto-discovers and injects them dynamically without needing paths in config.yaml.
-#
-# Server Whitelisting (Default-Deny):
-#   Set default.mode: ignore to ignore all undeclared channels in the server,
-#   and only respond in explicitly declared channels.
 channels:
   # The 'default' block is REQUIRED and acts as the fallback for all channels.
   default:
@@ -72,23 +63,9 @@ channels:
     wake_mode: classifier
     ignore_bots: true
     ambient_wake_threshold: 0.80
-    ambient_wake_prompt: "Determine whether the target message is relevant to Aerial and warrants Aerial waking up and responding, based on recent channel context."
-    # Optional Channel Lifecycle Webhook Interceptors (for sidecars or custom APIs):
-    # hooks:
-    #   on_wake:
-    #     url: "http://my-sidecar:8000/hooks/wake"
-    #     timeout_ms: 2000
-    #     on_timeout: "classify"
-    #   pre_turn:
-    #     url: "http://my-sidecar:8000/hooks/pre-turn"
-    #     timeout_ms: 5000
-    #     on_timeout: "retry"
-    #   post_turn:
-    #     url: "http://my-sidecar:8000/hooks/post-turn"
-    #     timeout_ms: 3000
-    #     on_timeout: "proceed"
+    ambient_wake_prompt: "Determine whether the target message is relevant to Aerial and warrants waking up and responding, based on recent channel context."
 
-  # Example channel with mention-only wake (listens ambiently, responds ONLY on explicit @mention or direct reply):
+  # Example channel with mention-only wake:
   lounge:
     mode: channel
     wake_mode: mention
@@ -98,22 +75,29 @@ channels:
   memes:
     mode: ignore
 
-# 5. Multi-Repository Git Synchronization
-git_sync:
-  enabled: true
-  interval: 60s
-  config_repo_url: https://github.com/your-username/your-aerial-config.git
-  repositories:
-    - /share/aerial-config
-    - /share/aerial
-
-# 6. Custom MCP Servers (Optional)
-# Define additional remote Model Context Protocol servers over Streamable HTTP / SSE.
-# Environment variables ${VAR} are interpolated dynamically from the host .env file.
+# 6. Model Context Protocol (MCP) Microservices (*.aerial)
+# Configure MCP server endpoints reachable across the internal Kubernetes cluster mesh.
+# Environment variables ${VAR} are interpolated dynamically from Kubernetes secrets.
 mcp_servers:
-  brave-search:
-    serverUrl: http://brave-mcp:4005/mcp
-  # custom-api:
-  #   serverUrl: https://mcp.example.com/mcp
-  #   headers:
-  #     Authorization: "Bearer ${CUSTOM_API_KEY}"
+  common:
+    memory:
+      serverUrl: "http://coven.aerial/mcp"
+    scheduler:
+      serverUrl: "http://haro.aerial/mcp"
+    docket:
+      serverUrl: "http://docket-mcp.aerial/mcp"
+    github:
+      serverUrl: "http://github-mcp.aerial/mcp"
+      headers:
+        Authorization: "Bearer ${GITHUB_PAT}"
+  discord:
+    kubernetes:
+      serverUrl: "http://kubernetes-mcp.aerial/mcp"
+    discord:
+      serverUrl: "http://discord-mcp.aerial/mcp"
+    victoriametrics:
+      serverUrl: "http://victoriametrics-mcp.aerial/mcp"
+    kernel:
+      serverUrl: "http://kernel-mcp.aerial/mcp"
+    vanadis:
+      serverUrl: "http://vanadis.aerial/mcp"

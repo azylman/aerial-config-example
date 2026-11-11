@@ -1,0 +1,8 @@
+# ==============================================================================
+# Homepage Service Configuration (services/homepage/homepage.yaml)
+# ==============================================================================
+
+port: "3001"
+allowed_hosts: "*"
+log_level: "info"
+node_tls_reject_unauthorized: "0"

@@ -1,0 +1,10 @@
+# ==============================================================================
+# Haro Schedule & Heartbeat Service Configuration (services/haro/haro.yaml)
+# ==============================================================================
+
+port: "4005"
+timezone: "America/Los_Angeles"
+eri_url: "http://eri.aerial"
+extra_event_sources:
+  - "home_assistant"
+  - "camera"

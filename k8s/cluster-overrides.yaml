@@ -1,0 +1,143 @@
+# ==============================================================================
+# Cluster Overrides & GitOps Flux Definitions (k8s/cluster-overrides.yaml)
+# ==============================================================================
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: aerial
+  namespace: flux-system
+spec:
+  interval: 1m
+  ref:
+    branch: main
+  timeout: 60s
+  url: https://github.com/azylman/aerial.git
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: aerial-config
+  namespace: flux-system
+spec:
+  interval: 1m
+  ref:
+    branch: main
+  secretRef:
+    name: github-auth
+  timeout: 60s
+  url: https://github.com/example-user/aerial-config.git
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: aerial-core
+  namespace: flux-system
+spec:
+  force: false
+  interval: 5m
+  path: ./k8s
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: aerial
+  timeout: 5m
+  wait: false
+  postBuild:
+    substitute:
+      AERIAL_CONFIG_REPO_URL: "https://github.com/example-user/aerial-config.git"
+    substituteFrom:
+    - kind: ConfigMap
+      name: aerial-image-tags
+      optional: true
+  # ============================================================================
+  # Multi-Node & High-Availability spec.patches Overrides (Uncomment as needed)
+  # ============================================================================
+  # patches:
+  #   # ------------------------------------------------------------------------
+  #   # 1. CloudNativePG PostgreSQL HA: 2 instances with strict anti-affinity
+  #   # ------------------------------------------------------------------------
+  #   - patch: |
+  #       - op: replace
+  #         path: /spec/instances
+  #         value: 2
+  #       - op: replace
+  #         path: /spec/affinity/podAntiAffinityType
+  #         value: required
+  #     target:
+  #       group: postgresql.cnpg.io
+  #       version: v1
+  #       kind: Cluster
+  #       name: postgres
+  #       namespace: default
+  #
+  #   # ------------------------------------------------------------------------
+  #   # 2. Workload Node Pinning: Pin core services to a dedicated compute node
+  #   # ------------------------------------------------------------------------
+  #   - patch: |
+  #       apiVersion: apps/v1
+  #       kind: Deployment
+  #       metadata:
+  #         name: eri
+  #         namespace: default
+  #       spec:
+  #         template:
+  #           spec:
+  #             nodeSelector:
+  #               kubernetes.io/hostname: compute-node-1
+  #     target:
+  #       group: apps
+  #       version: v1
+  #       kind: Deployment
+  #       name: eri
+  #       namespace: default
+  #
+  #   # ------------------------------------------------------------------------
+  #   # 3. Persistent NAS / SMB / NFS Storage Mounts and Custom TLS Secrets
+  #   # ------------------------------------------------------------------------
+  #   - patch: |
+  #       apiVersion: apps/v1
+  #       kind: Deployment
+  #       metadata:
+  #         name: eri
+  #         namespace: default
+  #       spec:
+  #         template:
+  #           spec:
+  #             volumes:
+  #               - name: nas-storage
+  #                 persistentVolumeClaim:
+  #                   claimName: nas-pvc
+  #                   readOnly: true
+  #             containers:
+  #               - name: eri
+  #                 volumeMounts:
+  #                   - name: nas-storage
+  #                     mountPath: /mnt/nas
+  #                     readOnly: true
+  #     target:
+  #       group: apps
+  #       version: v1
+  #       kind: Deployment
+  #       name: eri
+  #       namespace: default
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: aerial-config
+  namespace: flux-system
+spec:
+  force: false
+  interval: 5m
+  path: ./k8s
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: aerial-config
+  timeout: 5m
+  wait: false
+  postBuild:
+    substituteFrom:
+    - kind: ConfigMap
+      name: aerial-image-tags
+      optional: true

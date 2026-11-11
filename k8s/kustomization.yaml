@@ -1,0 +1,26 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - cluster-overrides.yaml
+
+# Homepage config rendered into ConfigMaps so Reloader rolls the homepage pod
+# whenever a tile edit merges. Kustomize does not glob: any new file added under
+# homepage/ must also be listed here. Literal ${...} in these files would be
+# consumed by Flux postBuild substitution.
+configMapGenerator:
+  - name: homepage-user-config
+    namespace: default
+    options:
+      disableNameSuffixHash: true
+    files:
+      - ../homepage/bookmarks.yaml
+      - ../homepage/services.yaml
+      - ../homepage/settings.yaml
+      - ../homepage/widgets.yaml
+  - name: homepage-service-config
+    namespace: default
+    options:
+      disableNameSuffixHash: true
+    files:
+      - ../services/homepage/homepage.yaml
