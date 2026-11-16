@@ -16,6 +16,8 @@ Aerial is designed with a **Decoupled Multi-Repository Architecture**:
 Out of the box, Aerial's base Kubernetes manifests deploy turnkey onto a **single-node vanilla k3s cluster**:
 - Storage provisions automatically via k3s's built-in `local-path` storage provisioner.
 - Single-instance CloudNativePG PostgreSQL (`Cluster/postgres` with 1 instance and preferred anti-affinity).
+- Event streaming and job queues run via embedded single-replica NATS 2 JetStream (`StatefulSet/nats`).
+- Durable workflow execution and multi-chunk build state machines run via Restate (`RestateCluster/restate` and `RestateDeployment/vanadis-restate` managed by `restate-operator`).
 - Core services run unconstrained across available CPU and memory resources.
 - Flux CD reconciles both `aerial-core` from upstream `azylman/aerial` and `aerial-config` from your private configuration repository.
 
@@ -37,12 +39,11 @@ aerial-config-example/
 │   ├── general.md
 │   └── lounge.md
 ├── services/                     # Microservice configuration files mounted into cluster workloads
-│   ├── eri/eri.yaml              # Eri execution engine configuration
 │   ├── haro/haro.yaml            # Haro scheduler and heartbeat service configuration
 │   ├── coven/coven.yaml          # Coven semantic and procedural memory configuration
 │   ├── synapse/synapse.yaml      # Synapse Discord ingress and webhook router configuration
-│   ├── homepage/homepage.yaml    # Homepage service configuration
-│   └── victoriametrics/scrape.yml# Modular Prometheus metrics scrape configurations
+│   ├── vanadis/vanadis.yaml      # Vanadis build queue and dispatch configuration
+│   └── homepage/homepage.yaml    # Homepage service configuration
 ├── homepage/                     # Homepage dashboard HUD configurations
 │   ├── bookmarks.yaml            # Custom bookmark categories and quick links
 │   ├── services.yaml             # External service cards and application links
@@ -88,7 +89,7 @@ Instead, use `k8s/cluster-overrides.yaml`. Flux CD evaluates `Kustomization/aeri
        namespace: default
    ```
 2. **Workload Node Pinning (`nodeSelector`)**:
-   Uncomment the deployment patches to pin AI inference or heavy execution daemons (e.g. `eri`, `coven`, `vanadis`) to dedicated compute or GPU nodes:
+   Uncomment the deployment or statefulset patches to pin AI inference, stateful workloads, or heavy execution daemons (e.g. `eri`, `nats`, `restate`, `coven`, `vanadis`) to dedicated compute or storage nodes:
    ```yaml
    - patch: |
        apiVersion: apps/v1
@@ -116,12 +117,14 @@ Instead, use `k8s/cluster-overrides.yaml`. Flux CD evaluates `Kustomization/aeri
 ## Configuration Reference
 
 ### 1. Core Configuration (`config.yaml`)
-- **`model`**: Primary high-effort LLM model for multi-step reasoning, coding, and complex tasks (e.g. `Gemini 3.8 Flash (High)`).
-- **`low_effort_model`**: Fast, efficient model for ambient triage, classification, and background routines (e.g. `Gemini 3.8 Flash (Low)`).
+- **`model`**: Primary high-effort LLM model for multi-step reasoning, coding, and complex tasks (e.g. `gemini-3.8-flash-high`).
+- **`medium_effort_model`**: Medium-effort model for standard tasks, refactoring, and single-PR execution (e.g. `gemini-3.8-flash-medium`).
+- **`low_effort_model`**: Fast, efficient model for ambient triage, classification, and background routines (e.g. `gemini-3.8-flash-low`).
 - **`timezone`**: Timezone for scheduled cron routines and timestamp rendering (e.g. `America/Los_Angeles`).
 - **`system_channel`**: Discord channel name or Snowflake ID for startup announcements and diagnostic alerts.
 - **`admin_users`**: List of Discord user Snowflake IDs or Discord usernames authorized to perform system-level operations.
-- **`vanadis_url`**, **`haro_url`**, **`coven_url`**, **`docket_url`**: Internal microservice endpoints resolved via cluster CoreDNS (`*.aerial`).
+- **`synapse_url`**, **`vanadis_url`**, **`haro_url`**, **`coven_url`**, **`docket_url`**: Internal microservice endpoints resolved via cluster CoreDNS (`*.aerial`), such as `docket_url: "http://docket-mcp.aerial"`.
+- **`nats_url`**: Internal NATS JetStream client URL (e.g. `nats://nats.aerial:4222`).
 - **`channels`**: Interaction policies per Discord channel:
   - **`mode`**: `threads` (messages spawn/route to threads), `channel` (in-channel direct interaction), or `ignore` (completely ignored).
   - **`wake_mode`**: `classifier` (mentions, direct replies, and ambient relevance scoring), `mention` (strictly explicit @mentions or direct replies), or `all` (responds to every message).
@@ -141,8 +144,21 @@ Aerial includes an integrated [Homepage](https://gethomepage.dev/) dashboard HUD
 - **`widgets.yaml`**: Configure header widgets like OpenMeteo weather coordinates or resource monitors.
 - **`settings.yaml`**: Customize dashboard column layouts and themes.
 
-### 5. Modular Telemetry Scrapes (`services/victoriametrics/scrape.yml`)
-Define custom Prometheus scrape targets in `services/victoriametrics/scrape.yml`. VictoriaMetrics dynamically discovers and scrapes these targets.
+### 5. Custom Prometheus Scrapes (`VMServiceScrape` / `VMStaticScrape`)
+Define declarative Prometheus scrape targets using VictoriaMetrics Operator CRDs (`VMServiceScrape` or `VMStaticScrape`) in your `k8s/` manifests, reconciled automatically by `vm-operator`:
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMStaticScrape
+metadata:
+  name: custom-exporter
+  namespace: default
+spec:
+  jobName: custom-exporter
+  targetEndpoints:
+    - targets:
+        - my-exporter.default.svc.cluster.local:9100
+      interval: "15s"
+```
 
 ### 6. Custom Skills (`custom-skills/`)
 Add specialized runbooks in `custom-skills/<skill-name>/SKILL.md`. Aerial discovers them automatically and exposes them via progressive disclosure.

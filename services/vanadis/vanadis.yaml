@@ -1,0 +1,8 @@
+# ==============================================================================
+# Vanadis Build Queue & Dispatch Configuration (services/vanadis/vanadis.yaml)
+# ==============================================================================
+
+port: "4025"
+eri_url: "http://eri.aerial"
+nats_url: "nats://nats.aerial:4222"
+restate_ingress_url: "http://restate.restate.svc.cluster.local:8080"

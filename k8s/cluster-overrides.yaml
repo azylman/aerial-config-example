@@ -71,7 +71,7 @@ spec:
   #       namespace: default
   #
   #   # ------------------------------------------------------------------------
-  #   # 2. Workload Node Pinning: Pin core services to a dedicated compute node
+  #   # 2. Workload Node Pinning: Pin core services to dedicated nodes
   #   # ------------------------------------------------------------------------
   #   - patch: |
   #       apiVersion: apps/v1
@@ -89,6 +89,39 @@ spec:
   #       version: v1
   #       kind: Deployment
   #       name: eri
+  #       namespace: default
+  #   - patch: |
+  #       apiVersion: apps/v1
+  #       kind: StatefulSet
+  #       metadata:
+  #         name: nats
+  #         namespace: default
+  #       spec:
+  #         template:
+  #           spec:
+  #             nodeSelector:
+  #               kubernetes.io/hostname: storage-node-1
+  #     target:
+  #       group: apps
+  #       version: v1
+  #       kind: StatefulSet
+  #       name: nats
+  #       namespace: default
+  #   - patch: |
+  #       apiVersion: restate.dev/v1
+  #       kind: RestateCluster
+  #       metadata:
+  #         name: restate
+  #         namespace: default
+  #       spec:
+  #         compute:
+  #           nodeSelector:
+  #             kubernetes.io/hostname: storage-node-1
+  #     target:
+  #       group: restate.dev
+  #       version: v1
+  #       kind: RestateCluster
+  #       name: restate
   #       namespace: default
   #
   #   # ------------------------------------------------------------------------
