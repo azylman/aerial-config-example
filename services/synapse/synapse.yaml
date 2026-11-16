@@ -8,4 +8,9 @@ default_owner: true
 port: "4020"
 system_channel_id: ""
 
+eri_url: "http://eri.aerial"
+vanadis_url: "http://vanadis.aerial"
+haro_url: "http://haro.aerial"
+nats_url: "nats://nats.aerial:4222"
+
 auto_update_pr_authors: []

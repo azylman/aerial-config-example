@@ -5,6 +5,8 @@
 port: "4005"
 timezone: "America/Los_Angeles"
 eri_url: "http://eri.aerial"
+vanadis_url: "http://vanadis.aerial"
+nats_url: "nats://nats.aerial:4222"
 extra_event_sources:
   - "home_assistant"
   - "camera"

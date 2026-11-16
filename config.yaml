@@ -5,10 +5,13 @@
 
 # 1. Agent Model & Runtime Options
 # Primary high-effort model for multi-step reasoning, coding, and complex tasks
-model: "Gemini 3.8 Flash (High)"
+model: "gemini-3.8-flash-high"
+
+# Medium-effort model for standard tasks and single-PR execution
+medium_effort_model: "gemini-3.8-flash-medium"
 
 # Low-effort model for ambient classification, triage, and background routines
-low_effort_model: "Gemini 3.8 Flash (Low)"
+low_effort_model: "gemini-3.8-flash-low"
 
 # Timezone for scheduled cron routines and timestamp rendering
 timezone: "America/Los_Angeles"
@@ -18,10 +21,12 @@ timezone: "America/Los_Angeles"
 system_channel: "aerial-dev"
 
 # 3. Core Microservices (*.aerial Cluster CoreDNS)
+synapse_url: "http://synapse.aerial"
 vanadis_url: "http://vanadis.aerial"
 haro_url: "http://haro.aerial"
 coven_url: "http://coven.aerial"
-docket_url: "http://docket.aerial"
+docket_url: "http://docket-mcp.aerial"
+nats_url: "nats://nats.aerial:4222"
 
 # 4. Administrator Allowlist
 # Numeric Discord Snowflake IDs or Discord usernames authorized to perform system-level operations
@@ -97,6 +102,10 @@ mcp_servers:
       serverUrl: "http://discord-mcp.aerial/mcp"
     victoriametrics:
       serverUrl: "http://victoriametrics-mcp.aerial/mcp"
+    victorialogs:
+      serverUrl: "http://victorialogs-mcp.aerial/mcp"
+    victoriatraces:
+      serverUrl: "http://victoriatraces-mcp.aerial/mcp"
     kernel:
       serverUrl: "http://kernel-mcp.aerial/mcp"
     vanadis:
