@@ -19,7 +19,7 @@ Out of the box, Aerial's base Kubernetes manifests deploy turnkey onto a **singl
 - Event streaming and job queues run via embedded single-replica NATS 2 JetStream (`StatefulSet/nats`).
 - Durable workflow execution and multi-chunk build state machines run via Restate (`RestateCluster/restate` and `RestateDeployment/vanadis-restate` managed by `restate-operator`).
 - Core services run unconstrained across available CPU and memory resources.
-- Flux CD reconciles both `aerial-core` from upstream `azylman/aerial` and `aerial-config` from your private configuration repository.
+- Flux CD reconciles `flux-system` from this private configuration repository via `flux bootstrap github`, which stages `aerial-operators` and `aerial-core` from upstream `azylman/aerial`.
 
 ---
 
@@ -178,6 +178,7 @@ Add specialized runbooks in `custom-skills/<skill-name>/SKILL.md`. Aerial discov
    - Customize `homepage/` dashboard services, bookmarks, and widgets.
 
 3. **Deploy with Flux CD**:
-   - In `k8s/cluster-overrides.yaml`, point `GitRepository/aerial-config` and `AERIAL_CONFIG_REPO_URL` to your private repository URL.
-   - Apply `k8s/` or let Flux reconcile `cluster-overrides.yaml`.
+   - In `k8s/cluster-overrides.yaml`, set `AERIAL_CONFIG_REPO_URL` to your private repository URL.
+   - Run `flux bootstrap github --owner=<github-user-or-org> --repository=<your-private-config-repo> --branch=main --path=k8s --personal`.
+   - Flux bootstraps and reconciles this repository, which stages `aerial-operators` and `aerial-core` from upstream `azylman/aerial`.
    - When updates are pushed to your repository, Kubernetes `git-sync` sidecars and Flux CD automatically pull and hot-reload changes seamlessly!
