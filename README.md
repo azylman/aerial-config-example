@@ -167,15 +167,39 @@ Add specialized runbooks in `custom-skills/<skill-name>/SKILL.md`. Aerial discov
 
 ## How to Use This Template
 
+### Quickstart (Recommended)
+
+You can bootstrap an entire Aerial cluster from scratch with a single command. Run this on a fresh Linux machine:
+
+```bash
+GITHUB_PAT="your-github-pat" DISCORD_BOT_TOKEN="your-discord-bot-token" \
+  bash -c "$(curl -fsSL https://raw.githubusercontent.com/azylman/aerial/main/scripts/quickstart.sh)"
+```
+
+The script automatically:
+- Resolves your GitHub username from `GITHUB_PAT`.
+- Generates a private `aerial-config` repository from `azylman/aerial-config-example` if one does not already exist.
+- Installs single-node `k3s` and `flux` if missing.
+- Seeds `Secret/aerial-bootstrap-secrets` into Kubernetes.
+- Runs `flux bootstrap github` pointing to your private repository.
+- Waits for `pod/eri-restate` to be ready and launches interactive `agy` CLI authentication.
+
+---
+
+### Manual Setup
+
+If you prefer to customize `config.yaml` and `rules/` before bootstrapping:
+
 1. **Create your private repository**:
-   - Create a **private** repository on GitHub (e.g. `your-username/my-aerial-config`).
-   - Copy or fork the files from this repository into your private repo.
+   - Create a **private** repository on GitHub (e.g. `your-username/my-aerial-config`) using this template.
+   - Clone your repository locally.
 
 2. **Configure your options**:
    - Update `config.yaml` with your preferred models, admin users, and channel policies.
    - Adjust `rules/` with your preferred persona, communication style, and identity guidelines.
    - Add any desired channel instructions in `channels/`.
    - Customize `homepage/` dashboard services, bookmarks, and widgets.
+   - Commit and push your changes to `main`.
 
 3. **Deploy with Flux CD**:
    - Seed the initial bootstrap secrets in Kubernetes:
