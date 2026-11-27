@@ -15,9 +15,9 @@ Aerial is designed with a **Decoupled Multi-Repository Architecture**:
 ### Single-Node k3s Default Behavior
 Out of the box, Aerial's base Kubernetes manifests deploy turnkey onto a **single-node vanilla k3s cluster**:
 - Storage provisions automatically via k3s's built-in `local-path` storage provisioner.
-- Single-instance CloudNativePG PostgreSQL (`Cluster/postgres` with 1 instance and preferred anti-affinity).
+- Single-instance CloudNativePG PostgreSQL (`Cluster/postgres-19` with 1 instance and preferred anti-affinity).
 - Event streaming and job queues run via embedded single-replica NATS 2 JetStream (`StatefulSet/nats`).
-- Durable workflow execution and multi-chunk build state machines run via Restate (`RestateCluster/restate` and `RestateDeployment/vanadis-restate` managed by `restate-operator`).
+- Durable workflow execution and multi-chunk build state machines run via Restate (`RestateCluster/restate-green` and `RestateDeployment/vanadis-restate` managed by `restate-operator`).
 - Core services run unconstrained across available CPU and memory resources.
 - Flux CD reconciles `flux-system` from this private configuration repository via `flux bootstrap github`, which stages `aerial-operators` and `aerial-core` from upstream `azylman/aerial`.
 
@@ -72,7 +72,7 @@ Instead, use `k8s/cluster-overrides.yaml`. Flux CD evaluates `Kustomization/aeri
 
 ### Available Overrides in `k8s/cluster-overrides.yaml`:
 1. **High-Availability PostgreSQL (CloudNativePG)**:
-   Uncomment the `Cluster/postgres` patch in `k8s/cluster-overrides.yaml` to scale PostgreSQL to 2 instances with strict pod anti-affinity across worker nodes:
+   Uncomment the `Cluster/postgres-19` patch in `k8s/cluster-overrides.yaml` to scale PostgreSQL to 2 instances with strict pod anti-affinity across worker nodes:
    ```yaml
    - patch: |
        - op: replace
@@ -85,11 +85,11 @@ Instead, use `k8s/cluster-overrides.yaml`. Flux CD evaluates `Kustomization/aeri
        group: postgresql.cnpg.io
        version: v1
        kind: Cluster
-       name: postgres
+       name: postgres-19
        namespace: default
    ```
 2. **Workload Node Pinning (`nodeSelector`)**:
-   Uncomment the deployment or statefulset patches to pin AI inference, stateful workloads, or heavy execution daemons (e.g. `eri`, `nats`, `restate`, `coven`, `vanadis`) to dedicated compute or storage nodes:
+   Uncomment the deployment or statefulset patches to pin AI inference, stateful workloads, or heavy execution daemons (e.g. `eri`, `nats`, `restate-green`, `coven`, `vanadis`) to dedicated compute or storage nodes:
    ```yaml
    - patch: |
        apiVersion: apps/v1
@@ -178,7 +178,24 @@ Add specialized runbooks in `custom-skills/<skill-name>/SKILL.md`. Aerial discov
    - Customize `homepage/` dashboard services, bookmarks, and widgets.
 
 3. **Deploy with Flux CD**:
-   - In `k8s/cluster-overrides.yaml`, set `AERIAL_CONFIG_REPO_URL` to your private repository URL.
-   - Run `flux bootstrap github --owner=<github-user-or-org> --repository=<your-private-config-repo> --branch=main --path=k8s --personal`.
+   - Seed the initial bootstrap secrets in Kubernetes:
+     ```bash
+     export GITHUB_PAT="your-github-pat"
+     export DISCORD_BOT_TOKEN="your-discord-bot-token"
+
+     kubectl create secret generic aerial-bootstrap-secrets \
+       --from-literal=DISCORD_BOT_TOKEN="$DISCORD_BOT_TOKEN" \
+       --from-literal=GITHUB_PAT="$GITHUB_PAT"
+     ```
+   - Run Flux bootstrap against your private repository:
+     ```bash
+     GITHUB_TOKEN="$GITHUB_PAT" flux bootstrap github \
+       --owner=<github-user-or-org> \
+       --repository=<your-private-config-repo> \
+       --branch=main \
+       --path=k8s \
+       --personal
+     ```
    - Flux bootstraps and reconciles this repository, which stages `aerial-operators` and `aerial-core` from upstream `azylman/aerial`.
+   - In-cluster `Job/infisical-bootstrap` automatically initializes Infisical, derives `AERIAL_CONFIG_REPO_URL` directly from `GitRepository/flux-system`, creates `Secret/infisical-universal-auth`, and imports your bootstrap secrets without requiring the Infisical CLI on the host.
    - When updates are pushed to your repository, Kubernetes `git-sync` sidecars and Flux CD automatically pull and hot-reload changes seamlessly!

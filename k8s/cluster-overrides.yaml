@@ -46,8 +46,8 @@ spec:
   timeout: 5m
   wait: false
   postBuild:
-    substitute:
-      AERIAL_CONFIG_REPO_URL: "https://github.com/example-user/aerial-config.git"
+    # AERIAL_CONFIG_REPO_URL is automatically populated in ConfigMap/aerial-image-tags
+    # by Job/infisical-bootstrap from GitRepository/flux-system during cluster bootstrap.
     substituteFrom:
     - kind: ConfigMap
       name: aerial-image-tags
@@ -70,7 +70,7 @@ spec:
   #       group: postgresql.cnpg.io
   #       version: v1
   #       kind: Cluster
-  #       name: postgres
+  #       name: postgres-19
   #       namespace: default
   #
   #   # ------------------------------------------------------------------------
@@ -114,18 +114,16 @@ spec:
   #       apiVersion: restate.dev/v1
   #       kind: RestateCluster
   #       metadata:
-  #         name: restate
-  #         namespace: default
+  #         name: restate-green
   #       spec:
   #         compute:
   #           nodeSelector:
-  #             kubernetes.io/hostname: storage-node-1
+  #             storage-tier: nvme
   #     target:
   #       group: restate.dev
   #       version: v1
   #       kind: RestateCluster
-  #       name: restate
-  #       namespace: default
+  #       name: restate-green
   #
   #   # ------------------------------------------------------------------------
   #   # 3. Persistent NAS / SMB / NFS Storage Mounts and Custom TLS Secrets
